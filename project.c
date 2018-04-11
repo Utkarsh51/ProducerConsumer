@@ -64,3 +64,37 @@ void *consumer(void *thread_n) {
    }
     pthread_exit(0);
 }
+//main method
+void main(int argc, int **argv) {
+    bufferIndex=0;
+    pthread_mutex_init(&buffer_mutex, NULL);
+    sem_init(&full_sem,0, Size); 
+    sem_init(&empty_sem,0,0);
+/* full_sem is initialized to buffer size because "Size" number of producers can add one element to buffer each. They will wait semaphore each time, which will decrement semaphore value.
+empty_sem is initialized to 0, because initially buffer is empty and consumer cannot aquire critical section.They will have to wait until producer posts to that semaphore (increments semaphore value) after producing some item in the buffer*/
+    pthread_t thread[NoThreads];
+    int threadNumber[NoThreads];
+    int i;
+    for (i = 0; i < 1;i++) {
+        threadNumber[i] = i;
+        pthread_create(thread + i, NULL, producer, threadNumber + i);  
+        
+/* use this portion and comment the lloop section below to create consumer thread right after producer thread
+		threadNumber[i] = i;
+        pthread_create(&thread[i],NULL,consumer,&threadNumber[i]);  
+        i++;
+ */
+    }
+    for (i=0;i<NoThreads; i++){
+    	threadNumber[i] = i;
+    	pthread_create(&thread[i],NULL,consumer,&threadNumber[i]);
+		i++;  
+	}
+    for (i = 0; i < NoThreads; i++)
+        pthread_join(thread[i], NULL);
+    //pthread_mutex_destroy(&buffer_mutex);
+    //sem_destroy(&full_sem);
+    //sem_destroy(&empty_sem);
+    exit(0);
+    return 0;
+}
