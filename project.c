@@ -5,8 +5,11 @@
 #include<stdlib.h>
 
 #define Size 5
-#define NoThreads 8
-#define ProducerLoops 10
+//#define NoThreads 8
+//#define ProducerLoops 10
+int NoThreads=10;
+int ProducerLoops=5;
+int ConsumerLoops=2;
 //Buffer Definition//
 typedef int buffer_t;
 buffer_t buffer[Size];
