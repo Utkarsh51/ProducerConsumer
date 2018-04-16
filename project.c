@@ -5,11 +5,9 @@
 #include<stdlib.h>
 
 #define Size 5
-//#define NoThreads 8
-//#define ProducerLoops 10
-int NoThreads=10;
-int ProducerLoops=5;
-int ConsumerLoops=2;
+#define NoThreads 8
+#define ProducerLoops 10
+
 //Buffer Definition//
 typedef int buffer_t;
 buffer_t buffer[Size];
@@ -19,19 +17,24 @@ pthread_mutex_t buffer_mutex;
 sem_t full_sem;  // will return 0 when buffer will be full  
 sem_t empty_sem; // will return 0 when  buffer is empty works like index for the buffer */ 
 //method to put produced items in buffer
-void insertInBuffer(buffer_t value) {
-    if (bufferIndex < Size) {
-        buffer[bufferIndex++] = value;
+int insertInBuffer(buffer_t value) {
+    if (bufferIndex < Size-1) {
+        buffer[bufferIndex] = value;
+	    bufferIndex++;
+	    return 1;
     } else {
         printf("Buffer is Full can not produce\n");
+	    return 0;
     }
 }
 //method to remove consumed items from buffer
 buffer_t deleteFromBuffer() {
     if (bufferIndex > 0) {
-        return buffer[--bufferIndex]; 
-    } else {
+	    bufferIndex--;
+        return buffer[bufferIndex]; 
+    } else if(bufferIndex==0){
         printf("Buffer is empty Nothing to consume\n");
+	    exit(0);
     }
     return 0;
 }
@@ -39,17 +42,19 @@ buffer_t deleteFromBuffer() {
 void *producer(void *thread_n) {
     int threadNumber = *(int *)thread_n;
     buffer_t value;
-    int i=0;
+    int i=0,j;
     while (i++ < ProducerLoops) {
        // sleep(rand() % 10);
         value = rand() % 100;
         sem_wait(&full_sem); /* possible race condition here. After this thread wakes up, another thread can aqcuire mutex before this one, and add to buffer. Then the buffer would be full again and when this thread will try to insert into buffer there would be a buffer overflow condition */
         pthread_mutex_lock(&buffer_mutex); //producer locks the buffer (critical section) to perform its operation
-        insertInBuffer(value);
+        j=insertInBuffer(value);
         pthread_mutex_unlock(&buffer_mutex);
         sem_post(&empty_sem); // post increment emptybuffer semaphore after producing in the buffer
-        printf("Producer %d produced %d in the buffer\n", threadNumber, value);
+        if(j==1){
+		printf("Producer %d produced %d in the buffer\n", threadNumber, value);
     }
+    }	
     pthread_exit(0);
 }
 //Method for consumer to aquire critical section
@@ -57,7 +62,9 @@ void *consumer(void *thread_n) {
     int thread_numb = *(int *)thread_n;
     buffer_t value;
     int i=0;
-    while (i++ < ConsumerLoops) {
+    while (i <NoThreads ) {
+	    i++;
+	    sleep(2);
         sem_wait(&empty_sem); /* there could be race condition here, that could cause buffer underflow error */
         pthread_mutex_lock(&buffer_mutex);
         value = deleteFromBuffer(value);
@@ -78,7 +85,7 @@ empty_sem is initialized to 0, because initially buffer is empty and consumer ca
     pthread_t thread[NoThreads];
     int threadNumber[NoThreads];
     int i;
-    for (i = 0; i < 1;i++) {
+    for (i = 0; i < NoThreads/2;i++) {
         threadNumber[i] = i;
         pthread_create(thread + i, NULL, producer, threadNumber + i);  
         
@@ -99,5 +106,5 @@ empty_sem is initialized to 0, because initially buffer is empty and consumer ca
     //sem_destroy(&full_sem);
     //sem_destroy(&empty_sem);
     exit(0);
-    return 0;
+    //return 0;
 }
